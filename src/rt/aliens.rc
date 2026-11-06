@@ -1,0 +1,2 @@
+/* exe icon: built from the game's own ALIENS.ICO (tools/make_icon.py) */
+1 ICON "../../build/aliens.ico"
