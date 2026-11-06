@@ -26,13 +26,16 @@ static u64 last_present;
 void overlay_draw(u32 *pix, int pitch, int W, int H);
 void overlay_init(void);
 
+extern int opt_fullscreen;
+
 void video_init(void)
 {
     if (!VirtualAlloc(MEM + VRAM_GUEST, VRAM_SIZE, MEM_COMMIT, PAGE_READWRITE)) rt_fatal("cannot commit video memory");
     SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON, "1");        /* window icon from the exe */
     SDL_SetHint(SDL_HINT_WINDOWS_INTRESOURCE_ICON_SMALL, "1");
     win = SDL_CreateWindow("Aliens: A Comic Book Adventure", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                           1280, 960, SDL_WINDOW_RESIZABLE | (getenv("ALIENS_HIDDEN") ? SDL_WINDOW_HIDDEN : 0));
+                           1280, 960, SDL_WINDOW_RESIZABLE | (getenv("ALIENS_HIDDEN") ? SDL_WINDOW_HIDDEN :
+                                                              opt_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0));
     if (!win) rt_fatal("SDL window: %s", SDL_GetError());
     ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!ren) ren = SDL_CreateRenderer(win, -1, 0);

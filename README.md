@@ -20,18 +20,16 @@ It copies both discs (they are then always "in the drive", so there is no disc s
 update, lays the game out exactly like the original DOS installer did, and creates the game shortcut and
 an uninstaller. About 1.5 GB of disk space is needed.
 
-Two kinds of setup package:
-
-| Package | Game executable |
-|---|---|
-| **prebuilt** — `Aliens PC Setup.exe` | included, installed directly |
-| **convert** — `Aliens PC Setup.exe` + `builder\` | converted on your PC from your own `ALIENSP2.EXE` (about a minute) |
+The release download is **`Aliens-PC-Setup.exe`**, with the game executable already converted.
+A second kind of package can be built with `make dist` (`dist/convert`): the setup plus a build kit that
+converts the user's own `ALIENSP2.EXE` on their PC instead, so the download contains no game code at all.
 
 Scripted install: `"Aliens PC Setup.exe" /silent /cd1 <cd1> /cd2 <cd2> /patch <ALIEN103.EXE> /dir <folder> [/build] [/nodesktop] [/nostartmenu]`
 
 ## Playing
 
-- Mouse and keyboard work as in the original. **Alt+Enter**: fullscreen.
+- Starts in **fullscreen**; **Alt+Enter** switches to a window and back (remembered).
+- Mouse and keyboard work as in the original.
 - **F1**: switch between *continuous click* (the original: holding the button keeps clicking) and
   *single click* (one click per press). Saved in `aliens_pc.ini`.
 - Music plays through the Windows General MIDI synthesizer (the game's GM arrangements);

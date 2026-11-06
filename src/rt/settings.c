@@ -8,6 +8,7 @@
 
 int opt_click_once;          /* holding the left/right button = one click */
 int opt_click_ms = 100;      /* how long a press is reported as held */
+int opt_fullscreen = 1;      /* start in fullscreen (Alt+Enter toggles, remembered) */
 
 static char ini_path[700];
 
@@ -19,7 +20,11 @@ static const char default_ini[] =
     "; ClickOnce=1 turns each press into a single click (F1 toggles in game).\r\n"
     "ClickOnce=0\r\n"
     "; How long one click is reported to the game, in milliseconds.\r\n"
-    "ClickMs=100\r\n";
+    "ClickMs=100\r\n"
+    "\r\n"
+    "[video]\r\n"
+    "; 1 = start in fullscreen, 0 = in a window (Alt+Enter switches and is remembered)\r\n"
+    "Fullscreen=1\r\n";
 
 void settings_load(const char *exe_dir)
 {
@@ -30,12 +35,18 @@ void settings_load(const char *exe_dir)
     }
     opt_click_once = GetPrivateProfileIntA("input", "ClickOnce", 0, ini_path) != 0;
     opt_click_ms = GetPrivateProfileIntA("input", "ClickMs", 100, ini_path);
+    opt_fullscreen = GetPrivateProfileIntA("video", "Fullscreen", 1, ini_path) != 0;
     if (opt_click_ms < 20) opt_click_ms = 20;
     if (opt_click_ms > 1000) opt_click_ms = 1000;
-    rt_log("options: ClickOnce=%d ClickMs=%d\n", opt_click_once, opt_click_ms);
+    rt_log("options: ClickOnce=%d ClickMs=%d Fullscreen=%d\n", opt_click_once, opt_click_ms, opt_fullscreen);
 }
 
 void settings_save_click_once(void)
 {
     WritePrivateProfileStringA("input", "ClickOnce", opt_click_once ? "1" : "0", ini_path);
+}
+
+void settings_save_fullscreen(void)
+{
+    WritePrivateProfileStringA("video", "Fullscreen", opt_fullscreen ? "1" : "0", ini_path);
 }

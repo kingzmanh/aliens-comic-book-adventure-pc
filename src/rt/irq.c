@@ -154,7 +154,11 @@ void input_pump(void)
             if (ev.type == SDL_KEYDOWN && ev.key.keysym.scancode == SDL_SCANCODE_RETURN && (ev.key.keysym.mod & KMOD_ALT)) {
                 SDL_Window *w = SDL_GetWindowFromID(ev.key.windowID);
                 u32 fl = SDL_GetWindowFlags(w);
-                SDL_SetWindowFullscreen(w, (fl & SDL_WINDOW_FULLSCREEN_DESKTOP) ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+                extern int opt_fullscreen;
+                extern void settings_save_fullscreen(void);
+                opt_fullscreen = !(fl & SDL_WINDOW_FULLSCREEN_DESKTOP);
+                SDL_SetWindowFullscreen(w, opt_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+                settings_save_fullscreen();
                 break;
             }
             for (size_t i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
