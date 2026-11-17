@@ -201,6 +201,7 @@ static int load_hmp(const u8 *d, u32 size)
 static void midi_open(void)
 {
     if (mout) return;
+    if (getenv("ALIENS_MUTE")) { rt_log("music: muted (ALIENS_MUTE)\n"); return; }
     if (midiOutOpen(&mout, MIDI_MAPPER, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) {
         rt_log("music: no Windows MIDI output\n");
         mout = NULL;

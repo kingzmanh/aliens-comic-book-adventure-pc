@@ -37,7 +37,13 @@ void video_init(void)
                            1280, 960, SDL_WINDOW_RESIZABLE | (getenv("ALIENS_HIDDEN") ? SDL_WINDOW_HIDDEN :
                                                               opt_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0));
     if (!win) rt_fatal("SDL window: %s", SDL_GetError());
-    ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    /* no vsync: presents happen on the game's own thread (from its timer
+       interrupt), and a vsync wait there blocked the game for up to a whole
+       refresh each time - in tests the game thread sat in RenderPresent
+       40-100% of the time.  Presents are already paced to ~60/s below, and
+       the desktop compositor keeps the picture tear-free. */
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
+    ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     if (!ren) ren = SDL_CreateRenderer(win, -1, 0);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
@@ -81,11 +87,47 @@ void video_set_pal(int idx, int r, int g, int b)
     pal_dirty = 1;
 }
 
+/* ALIENS_PERF=1: every 2 s log presents, distinct pictures shown, and how
+   long the game thread spent inside video_present / SDL_RenderPresent */
+static int perf_on = -1;
+static u64 perf_t0, perf_in, perf_rp, perf_n, perf_new, perf_hash;
+u64 perf_3da;
+static void perf_frame(const u8 *src, int n)
+{
+    u64 h = 1469598103934665603ull;
+    for (int i = 0; i < n; i += 7) h = (h ^ src[i]) * 1099511628211ull;
+    if (h != perf_hash) { perf_hash = h; perf_new++; }
+}
+static void perf_report(u64 t)
+{
+    double f = (double)SDL_GetPerformanceFrequency();
+    if (!perf_t0) { perf_t0 = t; return; }
+    if ((double)(t - perf_t0) / f < 2.0) return;
+    double sec = (double)(t - perf_t0) / f;
+    rt_log("perf: %.0f presents/s, %.1f new pictures/s, present %.0f%% of time (RenderPresent %.0f%%), 3da reads %.0f/s, mode %dx%d\n",
+           perf_n / sec, perf_new / sec, 100.0 * perf_in / f / sec, 100.0 * perf_rp / f / sec, perf_3da / sec, video_w, video_h);
+    perf_t0 = t; perf_in = perf_rp = perf_n = perf_new = perf_3da = 0;
+}
+
+static void video_present_inner(int force);
 void video_present(int force)
+{
+    if (perf_on < 0) perf_on = getenv("ALIENS_PERF") != NULL;
+    if (!perf_on) { video_present_inner(force); return; }
+    u64 a = SDL_GetPerformanceCounter();
+    u64 n0 = perf_n;
+    video_present_inner(force);
+    u64 b = SDL_GetPerformanceCounter();
+    if (perf_n != n0) perf_in += b - a;
+    perf_report(b);
+}
+
+static void video_present_inner(int force)
 {
     u64 now = SDL_GetTicks64();
     if (!force && now - last_present < 15) return;
     last_present = now;
+    if (perf_on > 0) perf_n++;
     if (pal_dirty) {
         for (int i = 0; i < 256; i++) {
             u32 r = vga_pal[i * 3], g = vga_pal[i * 3 + 1], b = vga_pal[i * 3 + 2];
@@ -103,6 +145,7 @@ void video_present(int force)
         }
         void *pix;
         int pitch;
+        if (perf_on > 0) perf_frame(src, video_w * video_h);
         if (SDL_LockTexture(tex, NULL, &pix, &pitch) == 0) {
             for (int y = 0; y < video_h; y++) {
                 u32 *d = (u32 *)((u8 *)pix + y * pitch);
@@ -135,7 +178,9 @@ void video_present(int force)
             }
         }
     }
+    u64 rp0 = SDL_GetPerformanceCounter();
     SDL_RenderPresent(ren);
+    if (perf_on > 0) perf_rp += SDL_GetPerformanceCounter() - rp0;
 }
 
 /* pixel write into the current mode's frame (banked VESA modes keep the

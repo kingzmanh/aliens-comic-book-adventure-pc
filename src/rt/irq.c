@@ -341,7 +341,7 @@ u32 rt_in8(u32 port, u32 at)
     case 0x60: return kbd_cur;
     case 0x61: return 0x20;
     case 0x64: return 0x1c;
-    case 0x3da: retrace ^= 9; return retrace;
+    case 0x3da: { extern u64 perf_3da; perf_3da++; } retrace ^= 9; return retrace;
     case 0x3c9: {
         u8 v = vga_pal[dac_r_idx * 3 + dac_comp];
         if (++dac_comp == 3) { dac_comp = 0; dac_r_idx = (dac_r_idx + 1) & 255; }
