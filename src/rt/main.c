@@ -10,6 +10,7 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 #include "rt.h"
+#include "addrs.h"
 
 CPU cpu;
 u32 rt_tail_ret;
@@ -103,7 +104,7 @@ void rt_backtrace(const char *tag)
     rt_log("  %s backtrace:", tag);
     for (u32 i = 0; i < 256 && n < 12; i++) {
         u32 v = RD32(sp + i * 4);
-        if (v >= 0x410000 && v < 0x482000 && RD8(v - 5) == 0xe8) { rt_log(" %08x", v - 5); n++; }
+        if (v >= 0x410000 && v < A_CODE_END && RD8(v - 5) == 0xe8) { rt_log(" %08x", v - 5); n++; }
     }
     rt_log("\n");
 }
@@ -210,22 +211,6 @@ static void setup_process(const char *args)
 /* The Watcom C startup (cstart at 46331c) set up for the PC: the same
    globals it fills in from the DOS process (PSP, environment, extender
    type), then __InitRtns and __CMain -> main(argc, argv). */
-#define W_STACKTOP   0x4df64cu
-#define W_CURBRK     0x4df650u
-#define W_DYNEND     0x4df654u   /* command line copy, parsed into argv */
-#define W_PGMNAME    0x4df658u
-#define W_PSP        0x4df65cu
-#define W_STACKLOW   0x4df660u
-#define W_STKTOP0    0x4df664u
-#define W_NO87       0x4df67cu
-#define W_EXTENDER   0x4df67eu
-#define W_EXTSUB     0x4df67fu
-#define W_ENVPTR     0x4df681u
-#define W_ENVSEL     0x4df685u
-#define W_OSMAJOR    0x4df687u
-#define W_OSMINOR    0x4df688u
-#define W_INITRTNS   0x474ec6u
-#define W_CMAIN      0x474e76u
 
 static void native_cstart(u32 stack, const char *args)
 {
@@ -240,7 +225,7 @@ static void native_cstart(u32 stack, const char *args)
     WR32(W_ENVPTR, 0x1200);
     WR16(W_ENVSEL, SEL_ENV);
     /* "<args>\0" then the program name, at the bottom of the stack area */
-    u32 a = 0x6324e0u;
+    u32 a = A_ARGBUF;
     WR32(W_DYNEND, a);
     size_t n = strlen(args);
     memcpy(MEM + a, args, n);
@@ -287,7 +272,10 @@ int main(int argc, char **argv)
     LoadInfo li;
     if (!le_load(exep, &li))
         rt_fatal("Could not load %s\nRun the installer first (it needs your Aliens CDs and the 1.03 update).", exep);
-    rt_log("loaded: entry %08x stack %08x\n", li.entry, li.stack);
+    rt_log("loaded: entry %08x stack %08x (%s build)\n", li.entry, li.stack, GAME_LANG);
+    if (li.entry != A_ENTRY)
+        rt_fatal("%s is not the game version this aliens.exe was made for (%s).\nRun the installer again.", exep,
+                 GAME_FR ? "French 1.02F" : "English 1.03US");
 
     /* game arguments (e.g. 'p' = copy files) */
     char args[128] = "";

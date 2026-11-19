@@ -3,8 +3,8 @@
 The kit lets the setup program turn the user's own ALIENSP2.EXE into the
 Windows game without any game code being shipped:
     builder/python     Python + capstone (runs tools/recomp.py)
-    builder/tools      le.py, x86an.py, recomp.py, native.txt
-    builder/re         functions.tsv (function start addresses)
+    builder/tools      le.py, x86an.py, recomp.py, native.txt, native_fr.txt
+    builder/re         functions.tsv, functions_fr.tsv (function starts per language)
     builder/src/rt     the PC runtime sources
     builder/mingw64    a minimal GCC: only the headers, libraries and
                        programs this build actually uses (found with gcc -M,
@@ -40,9 +40,10 @@ if os.path.exists(kit):
 os.makedirs(kit)
 
 # --- recompiler + runtime sources ---
-for f in ('le.py', 'x86an.py', 'recomp.py', 'native.txt'):
+for f in ('le.py', 'x86an.py', 'recomp.py', 'native.txt', 'native_fr.txt'):
     cp(os.path.join(HERE, 'tools', f), os.path.join(kit, 'tools', f))
-cp(os.path.join(HERE, 're', 'functions.tsv'), os.path.join(kit, 're', 'functions.tsv'))
+for f in ('functions.tsv', 'functions_fr.tsv'):
+    cp(os.path.join(HERE, 're', f), os.path.join(kit, 're', f))
 for f in glob.glob(os.path.join(HERE, 'src', 'rt', '*.[ch]')):
     cp(f, os.path.join(kit, 'src', 'rt', os.path.basename(f)))
 

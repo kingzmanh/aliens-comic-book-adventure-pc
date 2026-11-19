@@ -6,22 +6,23 @@
  * followed by MIDI events.  Delta times are HMI variable-length numbers:
  * 7 bits per byte, least significant first, last byte has bit 7 set.
  *
- * Game-visible state kept like the original: 4d9c68 device id, 4d9d24 MIDI
- * up, 4d9d30 song loaded, 4d9d2c song handle, 4d9d28 volume (0..127). */
+ * Game-visible state kept like the original (addresses in addrs.h): device
+ * id, MIDI up, song loaded, song handle, volume (0..127). */
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>
 #include <stdlib.h>
 #include <string.h>
 #include "rt.h"
+#include "addrs.h"
 
 #define RET(n) (cpu.r[R_ESP] += 4 + (n))
-#define G_DEVICE  0x4d9c68u
-#define G_MIDI_UP 0x4d9d24u
-#define G_VOLUME  0x4d9d28u
-#define G_HANDLE  0x4d9d2cu
-#define G_LOADED  0x4d9d30u
-#define G_NAME    0x619ab0u
+#define G_DEVICE  A_MIDI_DEVICE
+#define G_MIDI_UP A_MIDI_UP
+#define G_VOLUME  A_MIDI_VOLUME
+#define G_HANDLE  A_MIDI_HANDLE
+#define G_LOADED  A_MIDI_LOADED
+#define G_NAME    A_MIDI_NAME
 #define MLOG(n) rt_log("music: " n " eax=%d vol=%d\n", (int)cpu.r[R_EAX], (int)RD32(G_VOLUME))
 
 extern int dos_resolve(const char *guest, char *host);

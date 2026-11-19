@@ -1,0 +1,26 @@
+# French build (ALIENSP2.EXE 1.02F): the same functions as native.txt,
+# found in the French executable by tools/xmap.py.
+# <relocated address> <C function>
+45e970 N_kbd_typematic     # keyboard controller: set typematic rate
+# sound: Cryo sound system + HMI SOS digital API -> native mixer (native_sound.c)
+45da80 N_snd_init          # InitSoundSystem(rate, verbose)
+45da04 N_snd_uninit
+45da10 N_snd_uninit
+469d62 N_sos_start_sample  # sosDIGIStartSample
+46a37b N_sos_stop_sample   # sosDIGIStopSample
+46a7f6 N_sos_set_volume    # sosDIGISetSampleVolume
+46aa99 N_sos_set_pan       # sosDIGISetPanLocation
+46a9cc N_sos_set_pitch     # sosDIGISetPitch
+46adee N_sos_master_volume # sosDIGISetMasterVolume
+46ae4e N_sos_sample_done   # sosDIGISampleDone
+46fe10 N_chain_intr        # Watcom _chain_intr
+474272 N_gr_line           # Watcom graph: clipped line (stack-built inner loop)
+# music: Cryo MIDI module (HMI SOS MIDI) -> native HMP player on Windows MIDI (native_midi.c)
+45a3a0 N_midi_init
+45a370 N_midi_uninit
+45a6b0 N_midi_play         # PlaySong(name, loop)
+45a570 N_midi_stop
+45a650 N_midi_fade
+45a620 N_midi_volume
+45a4d0 N_midi_pause
+45a520 N_midi_resume

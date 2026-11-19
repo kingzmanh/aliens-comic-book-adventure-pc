@@ -5,26 +5,28 @@ built from the official **1.03US update**. No DOSBox: the game's own code is con
 machine code to C by a static recompiler, and runs on a small PC runtime that replaces DOS, the
 DOS extender, the BIOS and the sound/video hardware with Windows services.
 
-**This repository contains no game files and no game code.** You need your own copy of the game:
+**This repository contains no game files and no game code.** You need your own copy of the game,
+**English or French** (the setup recognises the discs and installs the matching version):
 
 - **Aliens CD 1 and CD 2** (discs, ISO / BIN+CUE images, or copied folders)
-- **The official 1.03 update**, `ALIEN103.EXE`
+- English discs only: **the official 1.03 update**, `ALIEN103.EXE`
+  (the French CD 1 already contains the French version 1.02F, with French text, voices and pictures)
 
 Built on the official Aliens 1.03 update by Cryo Interactive / Mindscape (programming: Nicolas Choukroun).
 *Aliens* © 20th Century Fox. This is a fan preservation project and is not affiliated with any of them.
 
 ## Installing
 
-Run **`Aliens PC Setup.exe`**, point it at your two CDs and `ALIEN103.EXE`, choose a folder, press Install.
-It copies both discs (they are then always "in the drive", so there is no disc swapping), unpacks the
-update, lays the game out exactly like the original DOS installer did, and creates the game shortcut and
-an uninstaller. About 1.5 GB of disk space is needed.
+Run **`Aliens PC Setup.exe`**, point it at your two CDs (and `ALIEN103.EXE` for the English version),
+choose a folder, press Install. It copies both discs (they are then always "in the drive", so there is no
+disc swapping), lays the game out exactly like the original DOS installer did, and creates the game
+shortcut and an uninstaller. About 1.5 GB of disk space is needed.
 
 The release download is **`Aliens-PC-Setup.exe`**, with the game executable already converted.
 A second kind of package can be built with `make dist` (`dist/convert`): the setup plus a build kit that
 converts the user's own `ALIENSP2.EXE` on their PC instead, so the download contains no game code at all.
 
-Scripted install: `"Aliens PC Setup.exe" /silent /cd1 <cd1> /cd2 <cd2> /patch <ALIEN103.EXE> /dir <folder> [/build] [/nodesktop] [/nostartmenu]`
+Scripted install: `"Aliens PC Setup.exe" /silent /cd1 <cd1> /cd2 <cd2> [/patch <ALIEN103.EXE>] /dir <folder> [/build] [/nodesktop] [/nostartmenu]`
 
 ## Playing
 
@@ -42,7 +44,8 @@ Scripted install: `"Aliens PC Setup.exe" /silent /cd1 <cd1> /cd2 <cd2> /patch <A
 | LE loader (the PMODE/W executable), objects moved above 1 MB | `tools/le.py`, `src/rt/le.c` |
 | Function discovery (recursive descent, code pointers from fixups, Watcom switch tables) | `tools/x86an.py` |
 | x86 → C recompiler (registers in C locals, flags only where used, x87) | `tools/recomp.py` |
-| Function start list (from Ghidra analysis of the 1.03 executable) | `re/functions.tsv` |
+| Function start list (from Ghidra analysis of the 1.03 executable; French 1.02F: `re/functions_fr.tsv`) | `re/functions.tsv` |
+| French build: same functions and data found in the French executable by their bytes (`tools/xmap.py`); `make GAME=fr`, addresses in `src/rt/addrs.h` | `tools/native_fr.txt` |
 | DOS (`int 21h`) on Windows files, DPMI (`int 31h`), VESA/VGA BIOS, mouse, MSCDEX | `src/rt/dos.c`, `dpmi.c`, `bios.c` |
 | Timer and keyboard interrupts driven from the Windows clock and window events | `src/rt/irq.c` |
 | Window, palette, VESA frame buffer (SDL2) | `src/rt/video.c` |

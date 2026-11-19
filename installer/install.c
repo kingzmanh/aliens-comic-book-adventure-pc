@@ -1,6 +1,8 @@
-/* The install itself: copies the user's CDs, unpacks the official 1.03
- * update, lays the game out the way the original DOS installer did, and puts
- * the PC executable in place (prebuilt, or converted on this PC). */
+/* The install itself: copies the user's CDs, lays the game out the way the
+ * original DOS installer did, and puts the PC executable in place (prebuilt,
+ * or converted on this PC).
+ *   English discs: the game program comes from the official 1.03US update.
+ *   French discs:  CD 1 already holds the French program (1.02F); no update. */
 #include "setup.h"
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +14,8 @@
 
 #define GAME_EXE_SIZE 916367u
 #define GAME_EXE_CRC  0xb83e34f1u      /* ALIENSP2.EXE from the 1.03US update */
+#define GAME_EXE_FR_SIZE 930383u
+#define GAME_EXE_FR_CRC  0x94cde1c3u   /* ALIENSP2.EXE 1.02F on the French CD 1 */
 
 static const char *sprite_dirs[] = {"ALIENS", "ARME", "DIVERS", "EGGS", "FACEHUG", "FIRST", "HERICK", "QEEN", "SOLDAT"};
 
@@ -191,7 +195,7 @@ static int run_wait(const char *cmdline, const char *path_add, const char *logna
 
 typedef struct { char cmd[4096]; HANDLE proc; } Job;
 
-static int build_game(const char *kit, const char *dir, const char *game_exe, Progress *pr)
+static int build_game(const char *kit, const char *dir, const char *game_exe, int fr, Progress *pr)
 {
     char gen[MAX_PATH * 2], obj[MAX_PATH * 2], log[MAX_PATH * 2], bin[MAX_PATH * 2], cmd[8192];
     snprintf(gen, sizeof gen, "%s\\build\\gen", dir);
@@ -201,8 +205,8 @@ static int build_game(const char *kit, const char *dir, const char *game_exe, Pr
     make_dirs(gen);
     make_dirs(obj);
     setup_log("Converting the game code on this PC (this takes a few minutes)...");
-    snprintf(cmd, sizeof cmd, "\"%s\\python\\python.exe\" -I \"%s\\tools\\recomp.py\" \"%s\" \"%s\\re\\functions.tsv\" \"%s\\tools\\native.txt\" \"%s\"",
-             kit, kit, game_exe, kit, kit, gen);
+    snprintf(cmd, sizeof cmd, "\"%s\\python\\python.exe\" -I \"%s\\tools\\recomp.py\" \"%s\" \"%s\\re\\functions%s.tsv\" \"%s\\tools\\native%s.txt\" \"%s\"",
+             kit, kit, game_exe, kit, fr ? "_fr" : "", kit, fr ? "_fr" : "", gen);
     if (run_wait(cmd, NULL, log) != 0) return fail("the recompiler failed (see build\\build.log)");
     progress_add(pr, 50ull << 20);
     /* compile: generated code + runtime, about half the CPU threads at a time */
@@ -241,8 +245,8 @@ static int build_game(const char *kit, const char *dir, const char *game_exe, Pr
             const char *base = strrchr(s, '\\') + 1;
             int is_rt = strstr(s, "\\src\\rt\\") != NULL;
             snprintf(jobs[j].cmd, sizeof jobs[j].cmd,
-                     "\"%s\\gcc.exe\" %s -std=gnu11 -O2 -fwrapv -fno-strict-aliasing -w -I\"%s\" -I\"%s\" -I\"%s\\mingw64\\include\\SDL2\" -c \"%s\" -o \"%s\\%s%s.o\"",
-                     bin, is_rt ? "-DSDL_MAIN_HANDLED" : "-g0", rt, gen, kit, s, obj, is_rt ? "rt_" : "", base);
+                     "\"%s\\gcc.exe\" %s %s -std=gnu11 -O2 -fwrapv -fno-strict-aliasing -w -I\"%s\" -I\"%s\" -I\"%s\\mingw64\\include\\SDL2\" -c \"%s\" -o \"%s\\%s%s.o\"",
+                     bin, is_rt ? "-DSDL_MAIN_HANDLED" : "-g0", fr ? "-DGAME_FR=1" : "", rt, gen, kit, s, obj, is_rt ? "rt_" : "", base);
             STARTUPINFOA st = {sizeof st};
             PROCESS_INFORMATION pi;
             if (!CreateProcessA(NULL, jobs[j].cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS, NULL, NULL, &st, &pi)) {
@@ -308,9 +312,9 @@ static int build_game(const char *kit, const char *dir, const char *game_exe, Pr
 }
 
 /* ---------- prebuilt mode ---------- */
-static int extract_prebuilt(const char *dst)
+static int extract_prebuilt(const char *dst, int fr)
 {
-    HRSRC r = FindResourceA(NULL, "GAMEEXE", (LPCSTR)RT_RCDATA);
+    HRSRC r = FindResourceA(NULL, fr ? "GAMEEXE_FR" : "GAMEEXE", (LPCSTR)RT_RCDATA);
     if (!r) return fail("this setup does not contain the prebuilt game - choose \"Convert on this PC\"");
     HGLOBAL g = LoadResource(NULL, r);
     DWORD n = SizeofResource(NULL, r);
@@ -318,6 +322,13 @@ static int extract_prebuilt(const char *dst)
 }
 
 int prebuilt_available(void) { return FindResourceA(NULL, "GAMEEXE", (LPCSTR)RT_RCDATA) != NULL; }
+
+/* French discs: CD 1 has the French game program ALIENSP2.EXE at the top of
+   its ALIENS folder (the English CD 1 has ALIENS.EXE there instead) */
+int disc_is_french(CdSrc *c1)
+{
+    return cd_exists(c1, "ALIENS\\ALIENSP2.EXE") && cd_exists(c1, "ALIENS\\ALIENF1.CDL");
+}
 
 int kit_available(char *kit, size_t n)
 {
@@ -345,9 +356,14 @@ int do_install(const InstallOpts *o, void (*cb)(u64, u64, void *), void *user)
     if (cd_exists(c1, "ALIENS\\DISK2\\DISK2") && cd_exists(c2, "ALIENS\\DISK1\\DISK1")) { CdSrc *t = c1; c1 = c2; c2 = t; }
     if (!cd_exists(c1, "ALIENS\\DISK1\\DISK1")) { cd_close(c1); cd_close(c2); return fail("CD 1 is not Aliens disc 1"); }
     if (!cd_exists(c2, "ALIENS\\DISK2\\DISK2")) { cd_close(c1); cd_close(c2); return fail("CD 2 is not Aliens disc 2"); }
-    size_t pn;
-    u8 *patch = read_file(o->patch, &pn);
-    if (!patch) { cd_close(c1); cd_close(c2); return fail("cannot read the 1.03 update file"); }
+    int fr = disc_is_french(c1);
+    setup_log("Discs: %s version", fr ? "French" : "English");
+    size_t pn = 0;
+    u8 *patch = NULL;
+    if (!fr) {
+        patch = read_file(o->patch, &pn);
+        if (!patch) { cd_close(c1); cd_close(c2); return fail("cannot read the 1.03 update file (needed for the English discs)"); }
+    }
 
     Progress pr = {0};
     pr.cb = cb;
@@ -370,16 +386,38 @@ int do_install(const InstallOpts *o, void (*cb)(u64, u64, void *), void *user)
     cd_close(c2);
 
     /* 2. the 1.03 update into C:\ALIENS */
-    setup_log("Unpacking the 1.03 update ...");
-    int nf = lha_extract(patch, pn, hd, &pr);
-    free(patch);
-    if (nf <= 0) return fail("the 1.03 update file could not be unpacked");
+    if (!fr) {
+        setup_log("Unpacking the 1.03 update ...");
+        int nf = lha_extract(patch, pn, hd, &pr);
+        free(patch);
+        if (nf <= 0) return fail("the 1.03 update file could not be unpacked");
+    } else {
+        /* French: the files at the top of CD 1's ALIENS folder (what the
+           French installer, I.EXE + "ALIENSP2 p", puts on the hard disk) */
+        setup_log("Copying the French game program ...");
+        char src[MAX_PATH * 2], pat[MAX_PATH * 2];
+        snprintf(src, sizeof src, "%s\\cd1\\ALIENS", game);
+        snprintf(pat, sizeof pat, "%s\\*", src);
+        WIN32_FIND_DATAA fd;
+        HANDLE h = FindFirstFileA(pat, &fd);
+        if (h != INVALID_HANDLE_VALUE) {
+            do {
+                if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+                char s[MAX_PATH * 3], d[MAX_PATH * 3];
+                snprintf(s, sizeof s, "%s\\%s", src, fd.cFileName);
+                snprintf(d, sizeof d, "%s\\%s", hd, fd.cFileName);
+                copy_file(s, d, NULL);
+            } while (FindNextFileA(h, &fd));
+            FindClose(h);
+        }
+    }
     snprintf(p, sizeof p, "%s\\ALIENSP2.EXE", hd);
     size_t en;
     u8 *ex = read_file(p, &en);
-    if (!ex || en != GAME_EXE_SIZE || crc32_buf(ex, en) != GAME_EXE_CRC) {
+    if (!ex || en != (fr ? GAME_EXE_FR_SIZE : GAME_EXE_SIZE) || crc32_buf(ex, en) != (fr ? GAME_EXE_FR_CRC : GAME_EXE_CRC)) {
         free(ex);
-        return fail("this is not the official 1.03US update (ALIENSP2.EXE does not match)");
+        return fail(fr ? "the French game program on CD 1 is not the supported version (1.02F)"
+                       : "this is not the official 1.03US update (ALIENSP2.EXE does not match)");
     }
     free(ex);
 
@@ -442,8 +480,8 @@ int do_install(const InstallOpts *o, void (*cb)(u64, u64, void *), void *user)
     char exe[MAX_PATH * 2];
     snprintf(exe, sizeof exe, "%s\\aliens.exe", o->dir);
     snprintf(p, sizeof p, "%s\\ALIENSP2.EXE", hd);
-    if (o->mode == MODE_BUILD) { if (!build_game(kit, o->dir, p, &pr)) return 0; }
-    else if (!extract_prebuilt(exe)) return 0;
+    if (o->mode == MODE_BUILD) { if (!build_game(kit, o->dir, p, fr, &pr)) return 0; }
+    else if (!extract_prebuilt(exe, fr)) return 0;
 
     /* 5. its icon, from the game's own ALIENS.ICO on CD 1 */
     snprintf(p, sizeof p, "%s\\cd1\\ALIENS\\ALIENS.ICO", game);

@@ -5,6 +5,7 @@
  * it pops its own return address. */
 #include <stdlib.h>
 #include "rt.h"
+#include "addrs.h"
 
 #define RET(n) (cpu.r[R_ESP] += 4 + (n))
 
@@ -14,8 +15,8 @@ void N_kbd_typematic(void)
 {
     u8 ah = cpu.r[R_EAX] & 3;
     u8 bl = cpu.r[R_EBX] & 0x1f;
-    WR8(0x4dd499, ah);
-    WR8(0x4dd49a, bl);
+    WR8(A_KBD_RATE, ah);
+    WR8(A_KBD_DELAY, bl);
     cpu.r[R_EAX] = (cpu.r[R_EAX] & 0xffff0000u) | ((u32)(ah | bl) << 8) | 0xfa;
     cpu.r[R_EBX] = (cpu.r[R_EBX] & 0xffffff00u) | bl;
     RET(0);
@@ -48,7 +49,7 @@ void N_gr_line(void)
     int x2 = (s16)cpu.r[R_EBX], y2 = (s16)cpu.r[R_ECX];
     u8 color = (u8)RD32(cpu.r[R_ESP] + 4);
     u32 style = RD32(cpu.r[R_ESP] + 8) & 0xffff;
-    int op = (s16)RD16(0x4de29f);
+    int op = (s16)RD16(A_GR_PLOTACT);
     if (getenv("ALIENS_LINELOG")) {
         static u32 n;
         if ((n++ % 200) < 8) rt_log("line %d,%d-%d,%d col %u style %04x op %d bank %d\n", x1, y1, x2, y2, color, style, op, video_bank_cur);

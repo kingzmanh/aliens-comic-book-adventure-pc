@@ -2,8 +2,11 @@
 gamedata/
 game/
 src/gen/
+src/gen_fr/
+game_fr/
 re/*
 !re/functions.tsv
+!re/functions_fr.tsv
 shots/
 
 # build output

@@ -9,6 +9,7 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 #include "rt.h"
+#include "addrs.h"
 
 #define RET(n) (cpu.r[R_ESP] += 4 + (n))
 #define NVOICE 32
@@ -118,21 +119,21 @@ void N_snd_init(void)
     if (rate >= 8000 && rate <= 48000) driver_rate = rate;
     audio_open();
     /* 16-bit stereo output */
-    WR32(0x4d7eec, 1); WR32(0x4d7ef0, 0); WR32(0x4d7ef4, 0); WR32(0x4d7ef8, 0);
-    WR32(0x4d7ee4, NVOICE);
-    WR32(0x4d9c64, NVOICE);
+    WR32(A_SND_FLAGS, 1); WR32(A_SND_FLAGS + 4, 0); WR32(A_SND_FLAGS + 8, 0); WR32(A_SND_FLAGS + 12, 0);
+    WR32(A_SND_VOICES, NVOICE);
+    WR32(A_SND_NVOICE2, NVOICE);
     for (int i = 0; i < NVOICE; i++) {
-        u32 s = 0x4d7f4c + i * 0x74;
+        u32 s = A_SND_SLOTS + i * 0x74;
         WR32(s, 0); WR16(s + 4, 0); WR32(s + 0x1c, 0); WR16(s + 0x20, 0);
         WR32(s + SS_PITCH, 0x10000);
         WR32(s + SS_FLAGS, 0x500);
-        WR32(0x619680 + i * 4, 0);
-        WR32(0x619780 + i * 8, 0xffffffff);
-        WR32(0x619784 + i * 8, 0);
+        WR32(A_SOS_HANDLES + i * 4, 0);
+        WR32(A_SOS_SAMPLES + i * 8, 0xffffffff);
+        WR32(A_SOS_SAMPLES + 4 + i * 8, 0);
     }
-    WR32(0x619954, 1);                 /* driver handle */
+    WR32(A_SOS_DRIVER, 1);                 /* driver handle */
     { extern void midi_system_init(void); midi_system_init(); }   /* native music (native_midi.c) */
-    WR32(0x4dd0f0, 1);                 /* sound system up */
+    WR32(A_SND_UP, 1);                 /* sound system up */
     rt_log("sound: native init, mixing rate %u\n", driver_rate);
     cpu.r[R_EAX] = 0;
     RET(0);
@@ -144,7 +145,7 @@ void N_snd_uninit(void)
     if (dev) SDL_LockAudioDevice(dev);
     memset(voices, 0, sizeof voices);
     if (dev) SDL_UnlockAudioDevice(dev);
-    WR32(0x4dd0f0, 0);
+    WR32(A_SND_UP, 0);
     RET(0);
 }
 

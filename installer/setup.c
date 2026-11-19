@@ -1,7 +1,8 @@
 /* Aliens: A Comic Book Adventure - PC Native setup.
  *
  * Usage: just run it.  Command line (testing / scripted installs):
- *   setup.exe /silent /cd1 <iso|drive|folder> /cd2 <...> /patch <ALIEN103.EXE>
+ *   setup.exe /silent /cd1 <iso|drive|folder> /cd2 <...> [/patch <ALIEN103.EXE>]
+ *             (/patch only for the English CDs; French CDs are detected)
  *             /dir <install folder> [/build] [/nodesktop]
  *   uninstall.exe /uninstall
  */
@@ -151,7 +152,8 @@ static void build_ui(void)
 {
     int y = 14;
     mk("STATIC", "Install Aliens: A Comic Book Adventure as a native Windows game.\n"
-                 "You need your two Aliens CDs (discs, ISO images or copied folders) and the official 1.03 update (ALIEN103.EXE).",
+                 "You need your two Aliens CDs (English or French: discs, ISO images or copied folders).\n"
+                 "English CDs also need the official 1.03 update (ALIEN103.EXE); French CDs need nothing else.",
        0, 16, y, 600, 36, 0);
     y += 48;
     mk("STATIC", "CD 1:", 0, 16, y + 4, 90, 20, 0);
@@ -204,9 +206,25 @@ static void start_install(void)
     opts.mode = SendMessageA(r_build, BM_GETCHECK, 0, 0) == BST_CHECKED ? MODE_BUILD : MODE_PREBUILT;
     opts.startmenu = SendMessageA(c_start, BM_GETCHECK, 0, 0) == BST_CHECKED;
     opts.desktop = SendMessageA(c_desk, BM_GETCHECK, 0, 0) == BST_CHECKED;
-    if (!opts.cd1[0] || !opts.cd2[0] || !opts.patch[0] || !opts.dir[0]) {
-        MessageBoxA(hwnd, "Please fill in both CDs, the 1.03 update and the install folder.", "Aliens setup", MB_ICONWARNING);
+    if (!opts.cd1[0] || !opts.cd2[0] || !opts.dir[0]) {
+        MessageBoxA(hwnd, "Please fill in both CDs and the install folder.", "Aliens setup", MB_ICONWARNING);
         return;
+    }
+    if (!opts.patch[0]) {
+        /* only the English discs need the update; either CD field may hold disc 1 */
+        int fr = 0;
+        const char *cds[2] = {opts.cd1, opts.cd2};
+        for (int i = 0; i < 2; i++) {
+            CdSrc *c = cd_open(cds[i]);
+            if (!c) continue;
+            if (cd_exists(c, "ALIENS\\DISK1\\DISK1")) fr = disc_is_french(c);
+            cd_close(c);
+        }
+        if (!fr) {
+            MessageBoxA(hwnd, "These are the English CDs: please also choose the official 1.03 update (ALIEN103.EXE).",
+                        "Aliens setup", MB_ICONWARNING);
+            return;
+        }
     }
     busy = 1;
     EnableWindow(b_install, FALSE);
